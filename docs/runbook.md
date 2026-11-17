@@ -26,7 +26,7 @@ The Cloudflare production trigger watches `codex/training-mvp`, the implementati
 
 ## Backend secrets
 
-The Cloudflare plugin connection is an administration capability; the app cannot use its credentials. Supply each optional runtime secret through the Cloudflare dashboard's encrypted secret input, or the pinned CLI's interactive secret prompt. Discover the exact secret command with `npx cf cli search "set a worker secret"` and read that command's help before entering it. Never put a value in a shell argument or paste it into chat.
+The Cloudflare plugin connection is an administration capability; the app cannot use its credentials. Open Cloudflare → Workers & Pages → `training` → Settings → Variables and Secrets, add each required value with type **Secret**, then deploy the change. Use the secure dashboard input; never put a secret value in a shell argument or paste it into chat. The pinned CLI's generated `workers secrets update` command exposes a `--text` argument, so it is not the recommended entry path for private values.
 
 | Secret                              | Purpose                                                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -64,7 +64,7 @@ Notes preserve the source prefix and add a clearly marked Training athlete secti
 
 ## Garmin
 
-Set the key in the backend secret prompt. The configured owner ID must match the athlete who owns that personal key. Never enter the key into Profile or a client environment variable. The current implementation uses Garmin's official Personal API token exchange and activity search paths, verified against its official Python client. Personal keys have user-selected expiry; access tokens last up to 24 hours. No refresh token is used. The import obtains a fresh token and fetches a bounded 20-activity page, exposing the next offset in its API response.
+Set the key through the backend dashboard's encrypted secret input described above. The configured owner ID must match the athlete who owns that personal key. Never enter the key into Profile or a client environment variable. The current implementation uses Garmin's official Personal API token exchange and activity search paths, verified against its official Python client. Personal keys have user-selected expiry; access tokens last up to 24 hours. No refresh token is used. The import obtains a fresh token and fetches a bounded 20-activity page, exposing the next offset in its API response.
 
 Profile imports available activities, retains raw provenance and stable external IDs, and offers possible same-sport/time matches. Matching is explicit; source activities do not silently create another counted workout. JSON, TCX and GPX imports and manual activity logging remain available. FIT binary import is not implemented. Actual account fields, access, limits and terms must be checked with the owner's key before relying on a metric. Missing fields stay missing. Replace expired/revoked keys through the same secure secret path.
 

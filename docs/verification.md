@@ -25,6 +25,17 @@ Comparison points: four-item navigation and selected cobalt state; supplied ligh
 
 Intentional differences: real fixture/source prescriptions replace the concept's illustrative 2-rep examples; additional sports and source-review controls satisfy the brief; explicit demo/save states replace unsubstantiated success; the phone workout uses a focused stack with a persistent Finish action instead of bottom tabs during active entry. The primary design was compared directly at desktop and phone viewports. The generated board contains two different surfaces, so it is not a single native browser viewport.
 
+| Comparison | Concept evidence | Render evidence and disposition |
+| --- | --- | --- |
+| Navigation and icons | Four labelled outline icons; cobalt selected row | Desktop rail and phone tabs retain those labels, metaphors and selected state. Focused workout navigation is intentional. |
+| Copy | Today, Start workout, Choose a session, Finish workout | Main actions match. Fixture disclaimers, source prescriptions and back-off guidance are required functional additions; the illustrative rep counts and upcoming-day summaries are replaced by real data. |
+| Table and typography | Open journal composition; aligned order, exercise and prescription columns | Wrapped ORDER was fixed with sufficient column width. System type and explicit control sizes retain hierarchy without oversized headings. |
+| Palette and containers | Supplied cool background, white surfaces, cobalt; outlined set rows | Supplied tokens, restrained borders and corners are retained; no decorative gradient/glass was added. |
+| Phone composition | Dense editable set rows and visible Finish action | Excess metadata was reduced and Finish made persistent. Rows fit 390 px without horizontal overflow; notes remain scrollable. |
+| History and dark state | Purpose-specific surfaces required by brief | Actual session list/filter controls and dark tokens were inspected separately, rather than treating the Today board as their layout. |
+
+The above-the-fold copy comparison found only the intentional functional additions listed above. No unresolved material visual mismatch was observed in the inspected views. Calculated contrast ratios for rendered token pairs were 16.73:1 for light primary text, 5.65:1 for light secondary text, 5.59:1 for the primary button, 4.90:1 for selected light navigation, and at least 5.01:1 for inspected dark text/control pairs. This is a component color check, not a full accessibility certification.
+
 ## Configured, awaiting owner credential checks
 
 - Existing Supabase project, authorised athlete membership, schema, private bucket and staged source candidates are configured.

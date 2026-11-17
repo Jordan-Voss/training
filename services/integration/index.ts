@@ -10,7 +10,12 @@ import {
 import { getWorkbook, writeResult } from './google';
 import { importGarmin } from './garmin';
 import { importRoutines } from '../../packages/core/routines';
-type Env = Cloudflare.Env;
+type Env = Cloudflare.Env & {
+  SUPABASE_SECRET_KEY?: string;
+  GOOGLE_SERVICE_ACCOUNT_JSON?: string;
+  GOOGLE_WRITE_SERVICE_ACCOUNT_JSON?: string;
+  GARMIN_PERSONAL_API_KEY?: string;
+};
 const json = (value: unknown, status = 200) =>
   Response.json(value, {
     status,

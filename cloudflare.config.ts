@@ -19,10 +19,9 @@ export default defineConfig({
       APP_ORIGIN: bindings.text<string>('https://training.jordanvoss.dev'),
       GARMIN_OWNER_ID: bindings.text<string>('52e014b8-7ef8-41a3-a1c6-295ad5818733'),
       SHEETS_WRITEBACK_ENABLED: bindings.text<string>('false'),
-      SUPABASE_SECRET_KEY: bindings.secret(),
-      GOOGLE_SERVICE_ACCOUNT_JSON: bindings.secret(),
-      GOOGLE_WRITE_SERVICE_ACCOUNT_JSON: bindings.secret(),
-      GARMIN_PERSONAL_API_KEY: bindings.secret(),
+      // Optional integrations: add encrypted secrets in the dashboard when ready.
+      // Declaring bindings.secret() makes cf require the key before any deployment.
+      // Existing encrypted secrets are preserved by cf deploy.
     },
     triggers: [triggers.scheduled({ schedule: '*/15 * * * *' })],
   },

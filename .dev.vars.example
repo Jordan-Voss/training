@@ -1,4 +1,4 @@
-# Server-only secrets, supplied through the Cloudflare secret prompt.
+# Server-only secrets; use Cloudflare's encrypted dashboard input for production.
 SUPABASE_SECRET_KEY=
 GOOGLE_SERVICE_ACCOUNT_JSON=
 GARMIN_PERSONAL_API_KEY=

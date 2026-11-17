@@ -2,6 +2,12 @@
 
 Checked on 17 November 2026. Evidence distinguishes implemented code, configured services and end-to-end checks requiring the owner's credentials/device.
 
+## Deployment
+
+[Training](https://training.jordanvoss.dev) is deployed through Cloudflare Workers and Static Assets. The successful production build ran the checks before deployment; the final playback fix is included in build `dff6f0dc-cb44-45e1-8e49-645bc9718428`, from commit `a2e6278`. The initial script-API-to-CLI handover used an explicit force override on this new Training Worker only, then the production trigger returned to normal conflict checking. No paid plan was enabled.
+
+Cloudflare Browser Run loaded and rendered the public Today page, including the local-demo label, programme rows and entry controls. Its live 1440×1000 screenshot was saved as `/tmp/training-live-today-desktop.png` and inspected with `view_image` alongside the concept and phone workout. The workspace's HTTP proxy refused the new hostname, and the cloud desktop browser runtime was unavailable, so direct local-to-live workflow testing could not be used. The local production bundle has the workflow/offline verification described below; live authenticated integrations remain separate pending checks. Browser Run's dynamic-script route did not execute successfully; its temporary session was explicitly closed.
+
 ## Implemented and checked
 
 - TypeScript checks for the Expo client, shared domain and separately typed Worker pass.
@@ -40,7 +46,7 @@ The above-the-fold copy comparison found only the intentional functional additio
 ## Configured, awaiting owner credential checks
 
 - Existing Supabase project, authorised athlete membership, schema, private bucket and staged source candidates are configured.
-- Cloudflare Worker, repository connection, build trigger, public client build variables and target domain configuration are prepared through the connected account.
+- Cloudflare Worker, static assets, repository connection, build trigger, public client build variables, custom domain and 15-minute schedule are deployed. The schedule performs no sheet writes while disabled or missing required runtime keys. Manual build invocation is verified; automatic GitHub push delivery remains unverified.
 - Auth email delivery/redirects require the athlete's sign-in and allow-list check. Existing applications' Auth Site URL was not replaced.
 - Live app-owned Google reads and durable result writes require dedicated Google credentials. Production writeback remains disabled. Copy-backed cell checks and domain conflict tests do not prove runtime authorisation or eliminate Google's read/write race.
 - Garmin endpoints and response normalisation are implemented from official documentation/client sources. The owner's key, actual fields, terms, quotas and real account import remain unverified.

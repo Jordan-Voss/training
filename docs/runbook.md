@@ -22,7 +22,7 @@ Use Node 24 and `npm ci`. Copy `.env.example` to ignored `.env` and fill the pub
 
 For restricted environments where Expo cannot create its local CLI state directory, this project's verified command used `__UNSAFE_EXPO_HOME_DIRECTORY=/tmp/training-expo EXPO_OFFLINE=1 npm run build:web`. This is an execution-environment workaround, not an app setting. Do not change `HOME`.
 
-The Cloudflare production trigger watches `codex/training-mvp`, the implementation branch submitted for review. After merging the pull request, change that trigger to the intended permanent branch, normally `main`. It runs type checks, domain/endpoint tests, Expo export and the Worker build before deploying. Build variables include only public client configuration and Node version; backend secrets are separate.
+The Cloudflare production trigger is scoped to `codex/training-mvp`, the implementation branch submitted for review. Its verified invocation is a manual build from Cloudflare; automatic GitHub push delivery has not been verified. Run that build after pushing app changes, or use the authenticated local deploy command. After merging the pull request, change the trigger to the intended permanent branch, normally `main`. It runs type checks, domain/endpoint tests, Expo export and the Worker build before deploying. Documentation-only changes are excluded. Build variables include only public client configuration and Node version; backend secrets are separate.
 
 ## Backend secrets
 

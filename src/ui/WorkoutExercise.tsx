@@ -380,6 +380,7 @@ export function WorkoutExercise({
                     accessibilityRole="checkbox"
                     accessibilityLabel={`${exercise.name} set ${index + 1} completed`}
                     accessibilityState={{ checked: set.status === 'completed' }}
+                    aria-checked={set.status === 'completed'}
                     onPress={() =>
                       setField(
                         set.id,

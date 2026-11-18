@@ -107,9 +107,11 @@ export type ActualSet = {
   id: string;
   kind: SetKind;
   load?: number;
+  loadSource?: 'topSet' | 'manual';
   loadUnit: 'kg' | 'lb';
   loadMode?: 'external' | 'bodyweight' | 'assisted';
   reps?: number;
+  repsSource?: 'prescription';
   status: Attempt;
   rpe?: number;
   rir?: number;

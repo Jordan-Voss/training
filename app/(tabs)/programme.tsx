@@ -25,12 +25,16 @@ export default function Programme() {
   const { store, user, run, start } = useRuntime();
   const c = useTheme();
   const version = activeVersion(state);
+  const previousExercises = new Map(
+    version?.days.flatMap((day) => day.exercises).map((e) => [e.id, e]) ?? [],
+  );
   const slot = nextSlot(state);
   const [round, setRound] = useState(1);
   const [rounds, setRounds] = useState('4');
   const [sources, setSources] = useState<Source[]>([]);
   const [source, setSource] = useState<number>();
   const [preview, setPreview] = useState<PrescriptionVersion>();
+  const [previewOrigin, setPreviewOrigin] = useState('');
   const [archive, setArchive] = useState(false);
   const [routines, setRoutines] = useState(false);
   const [origin, setOrigin] = useState('');
@@ -40,24 +44,27 @@ export default function Programme() {
     void supabase
       .from('training_candidates')
       .select('prescription,captured_at')
+      .order('captured_at', { ascending: false })
       .then(({ data }) => {
         if (data?.length) {
           const all = data.map((x) => x.prescription as PrescriptionVersion);
           const routineVersion = all.find((x) => x.kind === 'routines');
           if (routineVersion) void store.update((s) => ({ ...s, routines: routineVersion.days }));
           const versions = all.filter((x) => x.kind !== 'routines');
-          setSources(
-            versions
-              .filter((x) => x.source)
-              .map((x) => ({
-                sheetId: x.source!.sheetId,
-                title: x.source!.title,
-                range: x.source!.range,
-              })),
-          );
-          setSource(versions[0].source?.sheetId);
+          const bySheet = new Map<number, Source>();
+          for (const v of versions) {
+            if (v.source && !bySheet.has(v.source.sheetId)) {
+              bySheet.set(v.source.sheetId, {
+                sheetId: v.source.sheetId,
+                title: v.source.title,
+                range: v.source.range,
+              });
+            }
+          }
+          setSources([...bySheet.values()]);
+          setSource(versions[0]?.source?.sheetId);
           setOrigin(
-            `Read-only snapshot captured ${new Date(data[0].captured_at).toLocaleDateString('en-IE')}. Live refresh requires Training’s own Google authorisation.`,
+            `Saved import captured ${new Date(data[0].captured_at).toLocaleDateString('en-IE')}. Live refresh requires Training’s own Google authorisation.`,
           );
         }
       });
@@ -69,31 +76,38 @@ export default function Programme() {
       setOrigin('Live workbook metadata · Read-only');
     });
   }
-  async function loadPreview() {
+  async function loadPreview(live: boolean) {
     await run(async () => {
       if (source === undefined) throw new Error('Choose a source tab.');
-      const { data, error } = await supabase!
-        .from('training_candidates')
-        .select('prescription')
-        .eq('sheet_id', source)
-        .order('captured_at', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      if (data?.[0]) {
-        const v = data[0].prescription as PrescriptionVersion;
-        if (v.kind === 'routines') {
-          await store.update((s) => ({ ...s, routines: v.days }));
-          setRoutines(true);
-        } else setPreview(v);
-        return;
+      let v: PrescriptionVersion;
+      if (live) {
+        // A live check always reads Google; a saved candidate must never mask a sheet edit.
+        const result = await api<{ version: PrescriptionVersion }>('sheets/preview', {
+          sheetId: source,
+        });
+        v = result.version;
+        const checked = `Live sheet checked ${new Date().toLocaleString('en-IE')}`;
+        setPreviewOrigin(checked);
+        setOrigin(checked);
+      } else {
+        const { data, error } = await supabase!
+          .from('training_candidates')
+          .select('prescription,captured_at')
+          .eq('sheet_id', source)
+          .order('captured_at', { ascending: false })
+          .limit(1);
+        if (error) throw error;
+        if (!data?.[0])
+          throw new Error('No saved import for this tab. Check the sheet for updates.');
+        v = data[0].prescription as PrescriptionVersion;
+        setPreviewOrigin(
+          `Saved import from ${new Date(data[0].captured_at).toLocaleString('en-IE')}. This does not check the current sheet.`,
+        );
       }
-      const result = await api<{ version: PrescriptionVersion }>('sheets/preview', {
-        sheetId: source,
-      });
-      if (result.version.kind === 'routines') {
-        await store.update((s) => ({ ...s, routines: result.version.days }));
+      if (v.kind === 'routines') {
+        await store.update((s) => ({ ...s, routines: v.days }));
         setRoutines(true);
-      } else setPreview(result.version);
+      } else setPreview(v);
     });
   }
   async function accept() {
@@ -238,6 +252,11 @@ export default function Programme() {
             <T size={22} weight="600">
               Coach source
             </T>
+            <T muted size={14}>
+              Sheet edits are not pulled automatically. Check for updates, review the changes, then
+              accept them for future sessions. Started workouts and history keep their original
+              prescription.
+            </T>
             {!user ? (
               <>
                 <T muted>
@@ -269,11 +288,18 @@ export default function Programme() {
                         setPreview(undefined);
                       }}
                     />
-                    <Button
-                      title="Preview source mapping"
-                      secondary
-                      onPress={() => void loadPreview()}
-                    />
+                    <Row>
+                      <Button
+                        title="Preview saved import"
+                        secondary
+                        onPress={() => void loadPreview(false)}
+                      />
+                      <Button
+                        title="Check sheet for updates"
+                        secondary
+                        onPress={() => void loadPreview(true)}
+                      />
+                    </Row>
                   </>
                 ) : null}
               </>
@@ -292,6 +318,15 @@ export default function Programme() {
                 <T size={20} weight="600">
                   Review {preview.source?.title}
                 </T>
+                <T muted size={13}>
+                  {previewOrigin}
+                </T>
+                {version?.source?.workbookId === preview.source?.workbookId &&
+                version?.digest === preview.digest ? (
+                  <T muted size={14}>
+                    No coach prescription changes since the accepted version.
+                  </T>
+                ) : null}
                 <T muted>
                   {preview.days.length} numbered sessions → one mesocycle. The tab name does not
                   represent a calendar week.
@@ -313,9 +348,7 @@ export default function Programme() {
                   <Stack key={d.id} gap={6}>
                     <T weight="600">Day {d.day}</T>
                     {d.exercises.map((e) => {
-                      const old = version?.days
-                        .flatMap((x) => x.exercises)
-                        .find((x) => x.id === e.id);
+                      const old = previousExercises.get(e.id);
                       return (
                         <Stack key={e.id} gap={2}>
                           <T size={14}>
@@ -329,6 +362,34 @@ export default function Programme() {
                             <T size={13} style={{ color: c.accent }}>
                               Changed from {old.prescription}; affects future unstarted sessions
                               only.
+                            </T>
+                          ) : null}
+                          {old &&
+                          (old.backoff?.fraction !== e.backoff?.fraction ||
+                            old.backoff?.prescription !== e.backoff?.prescription ||
+                            old.backoff?.increment !== e.backoff?.increment) ? (
+                            <T size={13} style={{ color: c.accent }}>
+                              Back-offs changed from{' '}
+                              {old.backoff
+                                ? `${old.backoff.prescription} at ${Math.round(old.backoff.fraction * 100)}%, rounded to ${old.backoff.increment} kg`
+                                : 'none'}{' '}
+                              to{' '}
+                              {e.backoff
+                                ? `${e.backoff.prescription} at ${Math.round(e.backoff.fraction * 100)}%, rounded to ${e.backoff.increment} kg`
+                                : 'none'}
+                              ; affects future unstarted sessions only.
+                            </T>
+                          ) : null}
+                          {old && old.rpe !== e.rpe ? (
+                            <T size={13} style={{ color: c.accent }}>
+                              RPE changed from {old.rpe || 'unspecified'} to{' '}
+                              {e.rpe || 'unspecified'}.
+                            </T>
+                          ) : null}
+                          {old && old.coachNotes !== e.coachNotes ? (
+                            <T size={13} style={{ color: c.accent }}>
+                              Coach instructions changed. Started workouts keep their original
+                              instructions.
                             </T>
                           ) : null}
                           {e.review ? (

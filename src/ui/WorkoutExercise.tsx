@@ -11,10 +11,16 @@ import type {
 } from '../../packages/core/model';
 import {
   exerciseBackoff,
+  addWarmup,
+  fillBackoffs,
+  fixedReps,
   newSet,
   optionalNumber,
   previousExercise,
+  setAttempt,
+  setPrescription,
 } from '../../packages/core/training';
+import { parsePrescription } from '../../packages/core/sheets';
 import { useRuntime, useTraining } from '../data/runtime';
 import { resolveVideoUri, selectVideo } from '../data/videos';
 import { VideoPlayer } from './VideoPlayer';
@@ -30,7 +36,7 @@ const kindLabels: Record<SetKind, string> = {
 export function WorkoutExercise({
   session,
   exercise,
-  result,
+  result: originalResult,
   initialOpen = false,
   readOnly = false,
 }: {
@@ -43,11 +49,14 @@ export function WorkoutExercise({
   const [open, setOpen] = useState(initialOpen);
   const [detail, setDetail] = useState<string>();
   const [play, setPlay] = useState<string>();
+  const [focusLoad, setFocusLoad] = useState<string>();
+  const [focusNotes, setFocusNotes] = useState(false);
   const [componentName, setComponentName] = useState('');
   const [componentPrescription, setComponentPrescription] = useState('');
   const { store, run } = useRuntime();
   const state = useTraining();
   const c = useTheme();
+  const result = readOnly ? originalResult : fillBackoffs(exercise, originalResult);
   const prev = previousExercise(state, session, exercise);
   const target = exerciseBackoff(exercise, result.sets);
   const actual = result.sets.find((s) => s.id === detail);
@@ -65,15 +74,15 @@ export function WorkoutExercise({
       ...e,
       sets: e.sets.map((s) =>
         s.id === id
-          ? {
-              ...s,
-              [key]:
-                key === 'status' &&
-                value === 'completed' &&
-                s.components?.some((x) => x.status === 'partial' || x.status === 'failed')
-                  ? 'partial'
-                  : value,
-            }
+          ? key === 'status'
+            ? setAttempt(exercise, s, value as ActualSet['status'])
+            : {
+                ...s,
+                [key]: value,
+                ...(key === 'load' || key === 'loadUnit' || key === 'loadMode'
+                  ? { loadSource: 'manual' as const }
+                  : {}),
+              }
           : s,
       ),
     }));
@@ -206,24 +215,25 @@ export function WorkoutExercise({
                 {Math.round(exercise.backoff.fraction * 100)}% of your top set · Rounded to{' '}
                 {exercise.backoff.increment} kg
               </T>
-              {target && !readOnly ? (
-                <Button
-                  small
-                  title="Use target for unlogged back-offs"
-                  secondary
-                  onPress={() =>
-                    update((e) => ({
-                      ...e,
-                      sets: e.sets.map((s) =>
-                        s.kind === 'backoff' && s.status === 'unlogged'
-                          ? { ...s, load: target.display, loadUnit: target.unit }
-                          : s,
-                      ),
-                    }))
-                  }
-                />
-              ) : null}
+              <T muted size={13}>
+                Back-off loads fill automatically. Logged sets keep their recorded load.
+              </T>
             </Stack>
+          ) : null}
+          {!readOnly ? (
+            <Row>
+              <Button
+                small
+                title="Add warm-up"
+                icon={<Plus size={16} color={c.accent} />}
+                secondary
+                onPress={() => {
+                  const id = randomUUID();
+                  setFocusLoad(id);
+                  update((e) => addWarmup(e, () => id));
+                }}
+              />
+            </Row>
           ) : null}
           <View
             style={{
@@ -253,129 +263,185 @@ export function WorkoutExercise({
               </T>
               <View style={{ width: 44 }} />
             </Row>
-            {result.sets.map((set, index) => (
-              <Row
-                key={set.id}
-                style={{
-                  padding: 8,
-                  gap: 8,
-                  flexWrap: 'nowrap',
-                  borderTopWidth: 1,
-                  borderTopColor: c.divider,
-                }}
-              >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit ${exercise.name} set ${index + 1} details`}
-                  onPress={() => setDetail(set.id)}
-                  style={{ width: c.compact ? 64 : 95, minHeight: 44, justifyContent: 'center' }}
-                >
-                  <T size={12} weight="500">
-                    {kindLabels[set.kind]}
-                  </T>
-                  <T size={11} muted>
-                    {set.loadMode === 'bodyweight'
-                      ? 'BW'
-                      : set.loadMode === 'assisted'
-                        ? `Assisted ${set.loadUnit}`
-                        : set.loadUnit}
-                  </T>
-                </Pressable>
-                <Field
-                  compact
-                  numeric
-                  label={`${exercise.name} set ${index + 1} load`}
-                  value={set.load?.toString()}
-                  placeholder={set.kind === 'backoff' && target ? String(target.display) : '—'}
-                  disabled={readOnly || set.loadMode === 'bodyweight'}
-                  onChange={(v) => numeric(set.id, 'load', v)}
-                />
-                <Field
-                  compact
-                  numeric
-                  label={`${exercise.name} set ${index + 1} ${exercise.parsed?.durationSeconds ? 'seconds' : exercise.parsed?.distanceMetres ? 'metres' : 'reps'}`}
-                  value={(exercise.parsed?.durationSeconds
-                    ? set.durationSeconds
-                    : exercise.parsed?.distanceMetres
-                      ? set.distanceMetres
-                      : set.reps
-                  )?.toString()}
-                  disabled={readOnly}
-                  onChange={(v) =>
-                    numeric(
-                      set.id,
-                      exercise.parsed?.durationSeconds
-                        ? 'durationSeconds'
-                        : exercise.parsed?.distanceMetres
-                          ? 'distanceMetres'
-                          : 'reps',
-                      v,
-                    )
-                  }
-                />
-                <Pressable
-                  disabled={readOnly}
-                  accessibilityRole="checkbox"
-                  accessibilityLabel={`${exercise.name} set ${index + 1} completed`}
-                  accessibilityState={{ checked: set.status === 'completed' }}
-                  onPress={() =>
-                    setField(
-                      set.id,
-                      'status',
-                      set.status === 'completed' ? 'unlogged' : 'completed',
-                    )
-                  }
+            {result.sets.map((set, index) => {
+              const prescription = setPrescription(exercise, set);
+              const prescribedReps = fixedReps(prescription);
+              return (
+                <Row
+                  key={set.id}
                   style={{
-                    width: 44,
-                    height: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: set.status === 'completed' ? c.selected : 'transparent',
-                    borderRadius: 6,
+                    padding: 8,
+                    gap: 8,
+                    flexWrap: 'nowrap',
+                    borderTopWidth: 1,
+                    borderTopColor: c.divider,
                   }}
                 >
-                  {set.status === 'completed' ? (
-                    <Check size={22} color={c.accent} />
-                  ) : set.status === 'failed' || set.status === 'partial' ? (
-                    <T size={11} style={{ color: c.danger }}>
-                      {set.status}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${exercise.name} set ${index + 1} details`}
+                    onPress={() => {
+                      setFocusNotes(false);
+                      setDetail(set.id);
+                    }}
+                    style={{ width: c.compact ? 64 : 95, minHeight: 44, justifyContent: 'center' }}
+                  >
+                    <T size={12} weight="500">
+                      {kindLabels[set.kind]}
                     </T>
-                  ) : (
-                    <View
-                      style={{
-                        height: 20,
-                        width: 20,
-                        borderWidth: 1.5,
-                        borderColor: c.secondary,
-                        borderRadius: 4,
+                    <T size={11} muted>
+                      {set.loadMode === 'bodyweight'
+                        ? 'BW'
+                        : set.loadMode === 'assisted'
+                          ? `Assisted ${set.loadUnit}`
+                          : set.loadUnit}
+                    </T>
+                  </Pressable>
+                  <Field
+                    compact
+                    numeric
+                    label={`${exercise.name} set ${index + 1} load`}
+                    value={set.load?.toString()}
+                    autoFocus={focusLoad === set.id}
+                    placeholder={set.kind === 'backoff' && target ? String(target.display) : '—'}
+                    disabled={readOnly || set.loadMode === 'bodyweight'}
+                    onChange={(v) => numeric(set.id, 'load', v)}
+                  />
+                  {prescribedReps !== undefined ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Note missed reps for ${exercise.name} set ${index + 1}`}
+                      onPress={() => {
+                        setFocusNotes(true);
+                        setDetail(set.id);
                       }}
+                      style={{
+                        flex: 1,
+                        minWidth: 52,
+                        minHeight: 44,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <T size={16} weight="600" style={{ fontVariant: ['tabular-nums'] }}>
+                        {readOnly && set.reps !== undefined ? set.reps : prescribedReps}
+                      </T>
+                      <T size={10} muted>
+                        {readOnly && set.reps !== undefined ? 'recorded' : 'prescribed'}
+                      </T>
+                    </Pressable>
+                  ) : (
+                    <Field
+                      compact
+                      numeric
+                      label={`${exercise.name} set ${index + 1} ${prescription?.durationSeconds ? 'seconds' : prescription?.distanceMetres ? 'metres' : 'reps'}`}
+                      placeholder={
+                        prescription?.repsMax !== undefined
+                          ? `${prescription.reps}–${prescription.repsMax}`
+                          : prescription?.amrap
+                            ? 'AMRAP'
+                            : '—'
+                      }
+                      value={(prescription?.durationSeconds
+                        ? set.durationSeconds
+                        : prescription?.distanceMetres
+                          ? set.distanceMetres
+                          : set.reps
+                      )?.toString()}
+                      disabled={readOnly}
+                      onChange={(v) =>
+                        numeric(
+                          set.id,
+                          prescription?.durationSeconds
+                            ? 'durationSeconds'
+                            : prescription?.distanceMetres
+                              ? 'distanceMetres'
+                              : 'reps',
+                          v,
+                        )
+                      }
                     />
                   )}
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Attach video to ${exercise.name} set ${index + 1}`}
-                  disabled={readOnly}
-                  onPress={() => setDetail(set.id)}
-                  style={{ height: 44, width: 44, justifyContent: 'center', alignItems: 'center' }}
-                >
-                  <Camera
-                    size={20}
-                    color={state.media.some((m) => m.setId === set.id) ? c.accent : c.secondary}
-                  />
-                </Pressable>
-              </Row>
-            ))}
+                  <Pressable
+                    disabled={readOnly}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={`${exercise.name} set ${index + 1} completed`}
+                    accessibilityState={{ checked: set.status === 'completed' }}
+                    onPress={() =>
+                      setField(
+                        set.id,
+                        'status',
+                        set.status === 'completed' ? 'unlogged' : 'completed',
+                      )
+                    }
+                    style={{
+                      width: 44,
+                      height: 44,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: set.status === 'completed' ? c.selected : 'transparent',
+                      borderRadius: 6,
+                    }}
+                  >
+                    {set.status === 'completed' ? (
+                      <Check size={22} color={c.accent} />
+                    ) : set.status === 'failed' || set.status === 'partial' ? (
+                      <T size={11} style={{ color: c.danger }}>
+                        {set.status}
+                      </T>
+                    ) : (
+                      <View
+                        style={{
+                          height: 20,
+                          width: 20,
+                          borderWidth: 1.5,
+                          borderColor: c.secondary,
+                          borderRadius: 4,
+                        }}
+                      />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Attach video to ${exercise.name} set ${index + 1}`}
+                    disabled={readOnly}
+                    onPress={() => {
+                      setFocusNotes(false);
+                      setDetail(set.id);
+                    }}
+                    style={{
+                      height: 44,
+                      width: 44,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Camera
+                      size={20}
+                      color={state.media.some((m) => m.setId === set.id) ? c.accent : c.secondary}
+                    />
+                  </Pressable>
+                </Row>
+              );
+            })}
           </View>
           {!readOnly ? (
             <>
               <Row style={{ gap: 8 }}>
                 <Button
                   small
-                  title="Add set"
+                  title={exercise.backoff ? 'Add back-off' : 'Add set'}
                   icon={<Plus size={16} color={c.accent} />}
                   secondary
-                  onPress={() => update((e) => ({ ...e, sets: [...e.sets, newSet(randomUUID)] }))}
+                  onPress={() =>
+                    update((e) => ({
+                      ...e,
+                      sets: [
+                        ...e.sets,
+                        newSet(randomUUID, exercise.backoff ? 'backoff' : 'working'),
+                      ],
+                    }))
+                  }
                 />
                 <Button small title="Copy previous set" secondary onPress={copy} />
                 <Button
@@ -385,6 +451,10 @@ export function WorkoutExercise({
                   onPress={() => void run(() => store.undo(session.id))}
                 />
               </Row>
+              <T size={12} muted>
+                Tick done for the prescribed reps. Tap the rep count to note missed reps or a
+                change.
+              </T>
               <Field
                 label="Exercise notes"
                 value={result.notes}
@@ -511,6 +581,24 @@ export function WorkoutExercise({
                       ).map((value) => ({ value, label: value }))}
                       onChange={(v) => setField(actual.id, 'status', v)}
                     />
+                    <Field
+                      label="Set notes / missed reps"
+                      value={actual.notes}
+                      autoFocus={focusNotes}
+                      placeholder="e.g. Missed the last rep, or changed the prescribed work"
+                      multiline
+                      onChange={(v) => setField(actual.id, 'notes', v)}
+                    />
+                    {actual.loadSource === 'manual' &&
+                    actual.kind === 'backoff' &&
+                    actual.status === 'unlogged' ? (
+                      <Button
+                        title="Use calculated back-off load"
+                        secondary
+                        small
+                        onPress={() => setField(actual.id, 'loadSource', 'topSet')}
+                      />
+                    ) : null}
                     <Choice
                       label="Load mode"
                       value={actual.loadMode ?? 'external'}
@@ -558,6 +646,9 @@ export function WorkoutExercise({
                       <Stack gap={12}>
                         <T weight="600">Complex component attempts</T>
                         {definitions.map((component) => {
+                          const componentReps = fixedReps(
+                            parsePrescription(component.prescription),
+                          );
                           const entry = actual.components?.find(
                             (x) => x.componentId === component.id,
                           );
@@ -580,15 +671,15 @@ export function WorkoutExercise({
                               ...e,
                               sets: e.sets.map((set) =>
                                 set.id === actual.id
-                                  ? {
-                                      ...set,
-                                      components,
-                                      status: components.some(
+                                  ? setAttempt(
+                                      exercise,
+                                      { ...set, components },
+                                      components.some(
                                         (x) => x.status === 'partial' || x.status === 'failed',
                                       )
                                         ? 'partial'
                                         : set.status,
-                                    }
+                                    )
                                   : set,
                               ),
                             }));
@@ -598,27 +689,43 @@ export function WorkoutExercise({
                               <T size={14}>
                                 {component.name} · Prescribed {component.prescription}
                               </T>
-                              <Field
-                                numeric
-                                label={`${component.name} actual reps`}
-                                value={entry?.reps?.toString()}
-                                onChange={(v) => {
-                                  try {
-                                    patchComponent({ reps: optionalNumber(v) });
-                                  } catch (error) {
-                                    void run(async () => {
-                                      throw error;
-                                    });
-                                  }
-                                }}
-                              />
+                              {componentReps !== undefined ? (
+                                <T size={14}>
+                                  Prescribed reps: {componentReps} · Record deviations in set notes.
+                                </T>
+                              ) : (
+                                <Field
+                                  numeric
+                                  label={`${component.name} actual reps`}
+                                  value={entry?.reps?.toString()}
+                                  onChange={(v) => {
+                                    try {
+                                      patchComponent({ reps: optionalNumber(v) });
+                                    } catch (error) {
+                                      void run(async () => {
+                                        throw error;
+                                      });
+                                    }
+                                  }}
+                                />
+                              )}
                               <Choice
                                 label={`${component.name} attempt`}
                                 value={entry?.status ?? 'unlogged'}
                                 options={(
                                   ['unlogged', 'completed', 'partial', 'failed'] as const
                                 ).map((value) => ({ value, label: value }))}
-                                onChange={(status) => patchComponent({ status })}
+                                onChange={(status) =>
+                                  patchComponent({
+                                    status,
+                                    reps:
+                                      componentReps !== undefined
+                                        ? status === 'completed'
+                                          ? componentReps
+                                          : undefined
+                                        : entry?.reps,
+                                  })
+                                }
                               />
                             </Stack>
                           );
@@ -678,12 +785,6 @@ export function WorkoutExercise({
                         />
                       </>
                     ) : null}
-                    <Field
-                      label="Set notes / missed reps"
-                      value={actual.notes}
-                      multiline
-                      onChange={(v) => setField(actual.id, 'notes', v)}
-                    />
                     <Row>
                       <Button
                         secondary

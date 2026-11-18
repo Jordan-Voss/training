@@ -1,6 +1,14 @@
 # Verification
 
-Checked on 17 November 2026. Evidence distinguishes implemented code, configured services and end-to-end checks requiring the owner's credentials/device.
+Initial checks were performed on 17 November 2026, with the logging update checked on 18 November. Evidence distinguishes implemented code, configured services and end-to-end checks requiring the owner's credentials/device.
+
+## Logging update, 18 November
+
+- All 49 domain/endpoint tests and client/Worker TypeScript checks pass. The six added cases cover separate prescribed top/back-off reps, completion confirmation, missed-rep notes without fabricated counts, ranged/legacy reps, atomic persisted automatic back-offs with protected completed loads, manual overrides and ordered warm-ups.
+- A production-bundle browser check passed at 1440×1000 and 390×844, using Playwright Chromium because the Browser plugin is unavailable. Fixed rep inputs are absent; top-load entry fills all remaining back-offs; completed loads stay unchanged; tapping a fixed rep opens notes with focus; warm-ups insert before work with load focus and reused optional reps; accessory ranges stay editable. The workflow survived an offline browser-process restart, finished with session RPE 6/7 and retained notes/results without page errors. Screenshots are `/tmp/training-logging-phone.png`, `/tmp/training-warmups-phone.png` and `/tmp/training-logging-desktop.png`; these are web views, not native iOS screenshots.
+- A separate mocked-auth/source browser check confirmed that a saved candidate is labelled as a snapshot and a live check calls the backend even when that candidate exists. New top reps and percentage appeared in the review. This verifies UI routing, not app-owned Google authorisation.
+- The actual workbook was re-read without writes. Week 1 squat still has a 100% rule, `3x2` back-offs and the 2.5 kg MROUND increment. The athlete has no accepted block/cloud session at this check; its programme candidates remain private pending acceptance.
+- Expo generated the iOS native project successfully with the stable bundle ID and native plugins. No Xcode compilation, running Simulator, signed IPA or physical iPhone test is claimed. `npm run ios` now uses Expo's native build/run command on a Mac instead of only starting Metro.
 
 ## Deployment
 
@@ -32,14 +40,14 @@ Comparison points: four-item navigation and selected cobalt state; supplied ligh
 
 Intentional differences: real fixture/source prescriptions replace the concept's illustrative 2-rep examples; additional sports and source-review controls satisfy the brief; explicit demo/save states replace unsubstantiated success; the phone workout uses a focused stack with a persistent Finish action instead of bottom tabs during active entry. The primary design was compared directly at desktop and phone viewports. The generated board contains two different surfaces, so it is not a single native browser viewport.
 
-| Comparison | Concept evidence | Render evidence and disposition |
-| --- | --- | --- |
-| Navigation and icons | Four labelled outline icons; cobalt selected row | Desktop rail and phone tabs retain those labels, metaphors and selected state. Focused workout navigation is intentional. |
-| Copy | Today, Start workout, Choose a session, Finish workout | Main actions match. Fixture disclaimers, source prescriptions and back-off guidance are required functional additions; the illustrative rep counts and upcoming-day summaries are replaced by real data. |
-| Table and typography | Open journal composition; aligned order, exercise and prescription columns | Wrapped ORDER was fixed with sufficient column width. System type and explicit control sizes retain hierarchy without oversized headings. |
-| Palette and containers | Supplied cool background, white surfaces, cobalt; outlined set rows | Supplied tokens, restrained borders and corners are retained; no decorative gradient/glass was added. |
-| Phone composition | Dense editable set rows and visible Finish action | Excess metadata was reduced and Finish made persistent. Rows fit 390 px without horizontal overflow; notes remain scrollable. |
-| History and dark state | Purpose-specific surfaces required by brief | Actual session list/filter controls and dark tokens were inspected separately, rather than treating the Today board as their layout. |
+| Comparison             | Concept evidence                                                           | Render evidence and disposition                                                                                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Navigation and icons   | Four labelled outline icons; cobalt selected row                           | Desktop rail and phone tabs retain those labels, metaphors and selected state. Focused workout navigation is intentional.                                                                                |
+| Copy                   | Today, Start workout, Choose a session, Finish workout                     | Main actions match. Fixture disclaimers, source prescriptions and back-off guidance are required functional additions; the illustrative rep counts and upcoming-day summaries are replaced by real data. |
+| Table and typography   | Open journal composition; aligned order, exercise and prescription columns | Wrapped ORDER was fixed with sufficient column width. System type and explicit control sizes retain hierarchy without oversized headings.                                                                |
+| Palette and containers | Supplied cool background, white surfaces, cobalt; outlined set rows        | Supplied tokens, restrained borders and corners are retained; no decorative gradient/glass was added.                                                                                                    |
+| Phone composition      | Dense editable set rows and visible Finish action                          | Excess metadata was reduced and Finish made persistent. Rows fit 390 px without horizontal overflow; notes remain scrollable.                                                                            |
+| History and dark state | Purpose-specific surfaces required by brief                                | Actual session list/filter controls and dark tokens were inspected separately, rather than treating the Today board as their layout.                                                                     |
 
 The above-the-fold copy comparison found only the intentional functional additions listed above. No unresolved material visual mismatch was observed in the inspected views. Calculated contrast ratios for rendered token pairs were 16.73:1 for light primary text, 5.65:1 for light secondary text, 5.59:1 for the primary button, 4.90:1 for selected light navigation, and at least 5.01:1 for inspected dark text/control pairs. This is a component color check, not a full accessibility certification.
 

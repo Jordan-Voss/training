@@ -41,11 +41,23 @@ Only the backend declares these names. None uses an `EXPO_PUBLIC_` prefix. `.dev
 
 Create a dedicated Google Cloud service account, enable the Sheets API, and share the workbook with that account as a viewer. Store its JSON credential securely as `GOOGLE_SERVICE_ACCOUNT_JSON`. The runtime exchanges a short-lived assertion with the exact `spreadsheets.readonly` scope and uses the direct Sheets API. Chat's Google Drive authorisation is not the app's runtime credential.
 
-The initial private snapshot was captured through the connected Drive account. In Programme, preview the selected source tab and explicitly accept it as the first block, an update to future sessions, or a new block. Configure the round count. The tab name is not a calendar week. Hidden tabs are never automatically activated. The current adapter supports verified numbered-day layouts and a separate routine adapter for the inspected rugby warm-up/plyometric tab. Other layouts stop for review.
+The initial private snapshot came from the original workbook, not the integration test copy. It was captured through the connected Drive account. No block was yet accepted for the athlete at the 18 November check. The unauthenticated site shows local fixtures; private sheet content is never published as that demo.
+
+In Programme, **Preview saved import** reads the last captured snapshot and labels its timestamp. **Check sheet for updates** always requests a new read through Training's backend Google credential; it never quietly substitutes a saved snapshot. Without that credential, it reports the missing setup. **Refresh live sources** only reloads the source-tab list. Sheet edits are not polled or applied automatically.
+
+Review the selected source and explicitly accept it as the first block, an update to future sessions, or a new block. Configure the round count. Started and completed sessions retain their frozen versions; only future unstarted sessions use an accepted update. The tab name is not a calendar week. Hidden tabs are never automatically activated. The current adapter supports verified numbered-day layouts and a separate routine adapter for the inspected rugby warm-up/plyometric tab. Other layouts stop for review.
 
 The original source's `Week 1` has numeric sheet ID 0 and ten numbered days. Top-weight cells are column F, athlete/coach notes are K, and derived back-offs are H. Column L is completion there and has a different meaning in later tabs. These observations are source-specific, not a universal column map. Back-off targets use verified percentages and the original MROUND increment. Date-stored RPE ranges retain their displayed text and raw number/date format. Ambiguous notes and complex labels remain flagged. Existing legacy top weights remain provenance, not manufactured set histories.
 
 Every accepted source stores a new immutable version and an unverified mapping record. Started/completed sessions retain their frozen prescription. A new mapping supersedes older destinations during write-job checks without modifying historical records. Explicitly review new blocks and per-round destinations when cells are reused.
+
+## Fast set logging
+
+Fixed top/working reps and fixed back-off reps come from their separate frozen prescriptions. They appear as values, not text inputs. Marking a set complete confirms those prescribed reps; it does not fabricate completed work before that action. Rep ranges and AMRAP, unprescribed warm-ups and self-directed work keep optional numeric rep entry. Tap a fixed rep count for missed-rep/deviation notes and choose partial/failed where appropriate. A deviation does not guess an actual rep count from the note or change the coach's prescription.
+
+Entering or changing a top-set load fills untouched, unlogged back-offs immediately using the source percentage and MROUND increment. Completed/partial/failed sets and manually changed loads are preserved. A manual override can be returned to the calculated load from its set details while unlogged. Clearing the top load clears remaining automatic targets rather than turning them into zero.
+
+**Add warm-up** inserts before the work sets and focuses the new load field. Subsequent warm-ups reuse the last chosen warm-up rep count, with an empty load and unlogged state. **Add back-off** uses the imported back-off prescription and the current calculated target. Existing set IDs, media links and results are retained.
 
 ## Writeback test and enabling procedure
 
@@ -99,6 +111,8 @@ Cloud builds and Apple Developer membership can have their own quotas/costs. Che
 ## iPhone ad hoc installation
 
 Keep bundle ID `dev.jordanvoss.training`. Do not create a second identity for rebuilds. Install Xcode and command-line tools on a Mac for local native work, or use Expo's cloud build with an existing Apple Developer Program membership.
+
+For a real simulator preview on a Mac, configure the public `.env` values, run `npm ci`, then `npm run ios`. Expo generates the native project, installs Pods and opens the Simulator. A simulator preview does not need an ad hoc profile or paid Apple Developer membership. The 18 November Linux check generated this iOS project successfully with `expo prebuild --platform ios --no-install`; Xcode compilation and a rendered simulator frame still require a Mac. Phone-sized web screenshots show the shared layout and are labelled as web previews.
 
 1. Sign in securely with `npx eas-cli@27.10.0 login`, then run `npx eas-cli@27.10.0 init`. This associates the existing repository with the owner's Expo project and adds its real project ID. Do not invent one.
 2. Add the public client environment settings to the development/preview/production Expo environments. Add no backend keys. Use `npx eas-cli@27.10.0 device:create` to register the physical iPhone's UDID through Expo's enrolment link.

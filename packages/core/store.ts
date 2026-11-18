@@ -1,5 +1,5 @@
 import type { AppState, IdFactory, Session } from './model';
-import { createSession, validateSession } from './training';
+import { createSession, fillSessionBackoffs, validateSession } from './training';
 import { clone, stableJson } from './json';
 export interface Persistence {
   load(scope: string): Promise<AppState | undefined>;
@@ -65,7 +65,7 @@ export class TrainingStore {
     return this.update((state) => {
       const previous = state.sessions.find((s) => s.id === sessionId);
       if (!previous) throw new Error('Session not found.');
-      const next = change(clone(previous));
+      const next = fillSessionBackoffs(change(fillSessionBackoffs(clone(previous))));
       validateSession(next);
       if (
         previous.startedAt !== next.startedAt ||

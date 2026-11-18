@@ -1,9 +1,12 @@
 import type {
   ActualSet,
   AppState,
+  Attempt,
   Exercise,
+  ExerciseResult,
   IdFactory,
   PrescriptionVersion,
+  ParsedPrescription,
   Session,
   Sport,
   TrainingDay,
@@ -61,6 +64,95 @@ export function exerciseBackoff(exercise: Exercise, sets: ActualSet[]) {
         display: top?.loadUnit === 'lb' ? Number((result / 0.45359237).toFixed(2)) : result,
         unit: top?.loadUnit ?? 'kg',
       };
+}
+export function setPrescription(exercise: Exercise, set: ActualSet) {
+  if (set.kind === 'warmup' || set.kind === 'drop') return undefined;
+  return set.kind === 'backoff' ? exercise.backoff?.parsed : exercise.parsed;
+}
+export function fixedReps(prescription?: ParsedPrescription) {
+  return prescription &&
+    !prescription.review &&
+    !prescription.amrap &&
+    prescription.repsMax === undefined
+    ? prescription.reps
+    : undefined;
+}
+/** A completion confirms fixed prescribed reps; deviations retain notes, not invented rep counts. */
+export function setAttempt(exercise: Exercise, set: ActualSet, status: Attempt): ActualSet {
+  const next: ActualSet = {
+    ...set,
+    status:
+      status === 'completed' &&
+      set.components?.some(
+        (component) => component.status === 'partial' || component.status === 'failed',
+      )
+        ? 'partial'
+        : status,
+  };
+  const reps = fixedReps(setPrescription(exercise, set));
+  if (
+    next.status === 'completed' &&
+    reps !== undefined &&
+    (next.reps === undefined || next.repsSource === 'prescription')
+  ) {
+    next.reps = reps;
+    next.repsSource = 'prescription';
+  } else if (next.status !== 'completed' && next.repsSource === 'prescription') {
+    next.reps = undefined;
+    next.repsSource = undefined;
+  }
+  return next;
+}
+/** Fill only untouched/unlogged back-offs. Logged loads and deliberate overrides stay intact. */
+export function fillBackoffs(exercise: Exercise, result: ExerciseResult): ExerciseResult {
+  if (!exercise.backoff) return result;
+  const target = exerciseBackoff(exercise, result.sets);
+  return {
+    ...result,
+    sets: result.sets.map((set) => {
+      if (
+        set.kind !== 'backoff' ||
+        set.status !== 'unlogged' ||
+        set.loadSource === 'manual' ||
+        (set.load !== undefined && set.loadSource !== 'topSet') ||
+        set.loadMode === 'bodyweight' ||
+        set.loadMode === 'assisted'
+      )
+        return set;
+      return {
+        ...set,
+        load: target?.display,
+        loadUnit: target?.unit ?? set.loadUnit,
+        loadSource: target ? 'topSet' : undefined,
+      };
+    }),
+  };
+}
+export function fillSessionBackoffs(session: Session): Session {
+  if (session.status !== 'inProgress') return session;
+  return {
+    ...session,
+    exercises: session.exercises.map((result) => {
+      const exercise = session.prescription.exercises.find((e) => e.id === result.prescriptionId);
+      return exercise ? fillBackoffs(exercise, result) : result;
+    }),
+  };
+}
+export function addWarmup(result: ExerciseResult, id: IdFactory): ExerciseResult {
+  const warmups = result.sets.filter((set) => set.kind === 'warmup');
+  const previous = warmups.at(-1);
+  return {
+    ...result,
+    sets: [
+      ...warmups,
+      {
+        ...newSet(id, 'warmup'),
+        loadUnit: previous?.loadUnit ?? result.sets[0]?.loadUnit ?? 'kg',
+        reps: previous?.reps,
+      },
+      ...result.sets.filter((set) => set.kind !== 'warmup'),
+    ],
+  };
 }
 export function activeVersion(state: AppState) {
   return state.versions.find((v) => v.id === state.programme?.activeVersionId);

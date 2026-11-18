@@ -269,6 +269,7 @@ export function Field({
   disabled = false,
   maxLength,
   compact = false,
+  autoFocus = false,
 }: {
   label: string;
   value?: string;
@@ -279,6 +280,7 @@ export function Field({
   disabled?: boolean;
   maxLength?: number;
   compact?: boolean;
+  autoFocus?: boolean;
 }) {
   const c = useTheme();
   const [draft, setDraft] = useState(value ?? '');
@@ -294,6 +296,7 @@ export function Field({
         </T>
       ) : null}
       <TextInput
+        autoFocus={autoFocus}
         accessibilityLabel={label}
         value={draft}
         editable={!disabled}

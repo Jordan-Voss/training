@@ -1,0 +1,16 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "types": ["node", "react"]
+  },
+  "include": [
+    "app/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "packages/**/*.ts",
+    "tests/core.test.ts",
+    "scripts/inspect-workbook.ts"
+  ],
+  "exclude": ["node_modules", ".cloudflare", "services", "dist"]
+}

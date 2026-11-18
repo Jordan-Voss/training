@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": [],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "*.ts",
+    "../../cloudflare.config.ts",
+    "../../.cloudflare/types/index.d.ts",
+    "../../packages/core/**/*.ts"
+  ],
+  "exclude": ["../../node_modules"]
+}

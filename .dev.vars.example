@@ -1,0 +1,7 @@
+# Server-only secrets; use Cloudflare's encrypted dashboard input for production.
+SUPABASE_SECRET_KEY=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+GARMIN_PERSONAL_API_KEY=
+# Writeback is deliberately off until a test copy passes the runbook checks.
+SHEETS_WRITEBACK_ENABLED=false
+GOOGLE_WRITE_SERVICE_ACCOUNT_JSON=

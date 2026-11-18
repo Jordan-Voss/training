@@ -119,7 +119,14 @@ export function WorkoutExercise({
     if (last)
       update((e) => ({
         ...e,
-        sets: [...e.sets, { ...last, id: randomUUID(), status: 'unlogged' }],
+        sets:
+          last.kind === 'warmup'
+            ? [
+                ...e.sets.filter((set) => set.kind === 'warmup'),
+                { ...last, id: randomUUID(), status: 'unlogged' },
+                ...e.sets.filter((set) => set.kind !== 'warmup'),
+              ]
+            : [...e.sets, { ...last, id: randomUUID(), status: 'unlogged' }],
       }));
   }
   return (
@@ -324,10 +331,16 @@ export function WorkoutExercise({
                       }}
                     >
                       <T size={16} weight="600" style={{ fontVariant: ['tabular-nums'] }}>
-                        {readOnly && set.reps !== undefined ? set.reps : prescribedReps}
+                        {set.reps !== undefined && (readOnly || set.reps !== prescribedReps)
+                          ? set.reps
+                          : prescribedReps}
                       </T>
                       <T size={10} muted>
-                        {readOnly && set.reps !== undefined ? 'recorded' : 'prescribed'}
+                        {set.reps !== undefined && set.reps !== prescribedReps
+                          ? `recorded · Rx ${prescribedReps}`
+                          : readOnly && set.reps !== undefined
+                            ? 'recorded'
+                            : 'prescribed'}
                       </T>
                     </Pressable>
                   ) : (
